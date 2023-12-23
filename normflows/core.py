@@ -101,6 +101,24 @@ class NormalizingFlow(nn.Module):
         log_q += self.q0.log_prob(z)
         return -torch.mean(log_q)
 
+    def forward_kld_weighted(self, x, weights):
+        """Estimates forward KL divergence with MC weights of an unnormalized target distribution
+
+        Args:
+          x: Batch sampled from unnormalized target distribution
+          weights: MC weights of target function
+
+        Returns:
+          Estimate of forward KL divergence averaged over batch
+        """
+        log_q = torch.zeros(len(x), device=x.device)
+        z = x
+        for i in range(len(self.flows) - 1, -1, -1):
+            z, log_det = self.flows[i].inverse(z)
+            log_q += log_det
+        log_q += self.q0.log_prob(z)
+        return -torch.mean(weights * log_q)
+
     def reverse_kld(self, num_samples=1, beta=1.0, score_fn=True):
         """Estimates reverse KL divergence, see [arXiv 1912.02762](https://arxiv.org/abs/1912.02762)
 
@@ -334,6 +352,25 @@ class ConditionalNormalizingFlow(NormalizingFlow):
             log_q += log_det
         log_q += self.q0.log_prob(z, context=context)
         return -torch.mean(log_q)
+
+    def forward_kld_weighted(self, x, weights, context=None):
+        """Estimates forward KL divergence with MC weights of an unnormalized target distribution
+
+        Args:
+          x: Batch sampled from unnormalized target distribution
+          weights: MC weights of target function
+          context: Batch of conditions/context
+
+        Returns:
+          Estimate of forward KL divergence averaged over batch
+        """
+        log_q = torch.zeros(len(x), device=x.device)
+        z = x
+        for i in range(len(self.flows) - 1, -1, -1):
+            z, log_det = self.flows[i].inverse(z, context=context)
+            log_q += log_det
+        log_q += self.q0.log_prob(z, context=context)
+        return -torch.mean(weights * log_q)
 
     def reverse_kld(self, num_samples=1, context=None, beta=1.0, score_fn=True):
         """Estimates reverse KL divergence, see [arXiv 1912.02762](https://arxiv.org/abs/1912.02762)

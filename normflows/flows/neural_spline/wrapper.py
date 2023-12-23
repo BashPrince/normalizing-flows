@@ -30,6 +30,9 @@ class CoupledRationalQuadraticSpline(Flow):
         dropout_probability=0.0,
         reverse_mask=False,
         init_identity=True,
+        preprocessing=None,
+        apply_unconditional_transform=True,
+        use_batch_norm=False
     ):
         """Constructor
 
@@ -45,6 +48,10 @@ class CoupledRationalQuadraticSpline(Flow):
           dropout_probability (float): Dropout probability of the NN
           reverse_mask (bool): Flag whether the reverse mask should be used
           init_identity (bool): Flag, initialize transform as identity
+          preprocessing (Callable): Applies preprocessing to the net inputs
+          apply_unconditional_transform (bool): Passed to PiecewiseRationalQuadraticCoupling
+          use_batch_norm (bool): Passed to ResidualNet
+
         """
         super().__init__()
 
@@ -57,7 +64,8 @@ class CoupledRationalQuadraticSpline(Flow):
                 num_blocks=num_blocks,
                 activation=activation(),
                 dropout_probability=dropout_probability,
-                use_batch_norm=False,
+                use_batch_norm=use_batch_norm,
+                preprocessing=preprocessing
             )
             if init_identity:
                 torch.nn.init.constant_(net.final_layer.weight, 0.0)
@@ -73,7 +81,7 @@ class CoupledRationalQuadraticSpline(Flow):
             tails=tails,
             tail_bound=tail_bound,
             # Setting True corresponds to equations (4), (5), (6) in the NSF paper:
-            apply_unconditional_transform=True,
+            apply_unconditional_transform=apply_unconditional_transform,
         )
 
     def forward(self, z, context=None):

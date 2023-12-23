@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 from torch import nn
 from torch.nn import functional as F, init
@@ -49,7 +50,16 @@ class ResidualBlock(nn.Module):
             temps = F.glu(torch.cat((temps, self.context_layer(context)), dim=1), dim=1)
         return inputs + temps
 
+class OneBlobEncoder:
+    def __init__(self, num_bins=32) -> None:
+        self.num_bins = num_bins
 
+    def __call__(self, input):
+        sigma = 1.0 / self.num_bins
+        l = torch.arange(0.5 / self.num_bins, 1.0, 1.0 / self.num_bins, device=input.device).repeat((input.shape[0], 1))
+        l_minus_input = torch.cat([l - input[:,i:i+1] for i in range(input.shape[1])], dim=1)
+        return (1.0 / (sigma * np.sqrt(2.0 * np.pi))) * torch.exp(-0.5 * (l_minus_input / sigma)**2)
+    
 class ResidualNet(nn.Module):
     """A general-purpose residual network. Works only with 1-dim inputs."""
 
@@ -69,6 +79,10 @@ class ResidualNet(nn.Module):
         self.hidden_features = hidden_features
         self.context_features = context_features
         self.preprocessing = preprocessing
+
+        if isinstance(self.preprocessing, OneBlobEncoder):
+            in_features = in_features * self.preprocessing.num_bins
+
         if context_features is not None:
             self.initial_layer = nn.Linear(
                 in_features + context_features, hidden_features
