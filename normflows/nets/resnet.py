@@ -51,25 +51,25 @@ class ResidualBlock(nn.Module):
         return inputs + temps
 
 class OneBlobEncoder:
-    def __init__(self, upper, num_bins=32) -> None:
+    def __init__(self, num_bins, upper, device) -> None:
         self.num_bins = num_bins
         self.upper = upper
-
-    def __call__(self, input):
-        sigma = torch.tensor([upper / self.num_bins for upper in self.upper], device=input.device)
-        sigma = sigma.unsqueeze(0)
-        sigma = sigma.repeat_interleave(self.num_bins, dim=1)
-        l = torch.cat(
+        self.sigma = torch.tensor([upper / self.num_bins for upper in self.upper], device=device)
+        self.sigma = self.sigma.unsqueeze(0)
+        self.sigma = self.sigma.repeat_interleave(self.num_bins, dim=1)
+        self.l = torch.cat(
           [torch.arange(
             0.5 * upper / self.num_bins,
             upper,
             upper / self.num_bins,
-            device=input.device) for upper in self.upper]
+            device=device) for upper in self.upper]
           )
-        l = l.repeat((input.shape[0], 1))
+
+    def __call__(self, input):
+        l_repeated = self.l.repeat((input.shape[0], 1))
         input_repeated = input.repeat_interleave(self.num_bins, dim=1)
-        l_minus_input = l - input_repeated
-        return (1.0 / (sigma * np.sqrt(2.0 * np.pi))) * torch.exp(-0.5 * (l_minus_input / sigma)**2)
+        l_minus_input = l_repeated - input_repeated
+        return (1.0 / (self.sigma * np.sqrt(2.0 * np.pi))) * torch.exp(-0.5 * (l_minus_input / self.sigma)**2)
     
 class ResidualNet(nn.Module):
     """A general-purpose residual network. Works only with 1-dim inputs."""
