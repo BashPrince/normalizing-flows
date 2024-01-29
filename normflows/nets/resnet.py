@@ -51,6 +51,7 @@ class ResidualBlock(nn.Module):
         return inputs + temps
 
 class OneBlobEncoder:
+    """One blob encoding [Müller et al. 2018]"""
     def __init__(self, num_bins, num_dims, device) -> None:
         self.num_bins = num_bins
         self.sigma = torch.full((1, num_dims * self.num_bins), 1.0 / self.num_bins, device=device)
