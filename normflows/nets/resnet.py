@@ -51,19 +51,14 @@ class ResidualBlock(nn.Module):
         return inputs + temps
 
 class OneBlobEncoder:
-    def __init__(self, num_bins, upper, device) -> None:
+    def __init__(self, num_bins, num_dims, device) -> None:
         self.num_bins = num_bins
-        self.upper = upper
-        self.sigma = torch.tensor([upper / self.num_bins for upper in self.upper], device=device)
-        self.sigma = self.sigma.unsqueeze(0)
-        self.sigma = self.sigma.repeat_interleave(self.num_bins, dim=1)
-        self.l = torch.cat(
-          [torch.arange(
-            0.5 * upper / self.num_bins,
-            upper,
-            upper / self.num_bins,
-            device=device) for upper in self.upper]
-          )
+        self.sigma = torch.full((1, num_dims * self.num_bins), 1.0 / self.num_bins, device=device)
+        self.l = torch.arange(
+            0.5 / self.num_bins,
+            1.0,
+            1.0 / self.num_bins,
+            device=device).repeat(num_dims)
 
     def __call__(self, input):
         l_repeated = self.l.repeat((input.shape[0], 1))
