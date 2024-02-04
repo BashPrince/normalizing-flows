@@ -401,6 +401,35 @@ class ConditionalNormalizingFlow(NormalizingFlow):
             utils.set_requires_grad(self, True)
         log_p = self.p.log_prob(z, context=context)
         return torch.mean(log_q) - beta * torch.mean(log_p)
+    
+    def reverse_kld_log_q(self, num_samples=1, context=None, score_fn=True):
+        """Get log prob as computed in reverse_kld()
+
+        Args:
+          num_samples: Number of samples to draw from base distribution
+          context: Batch of conditions/context
+          beta: Annealing parameter, see [arXiv 1505.05770](https://arxiv.org/abs/1505.05770)
+          score_fn: Flag whether to include score function in gradient, see [arXiv 1703.09194](https://arxiv.org/abs/1703.09194)
+
+        Returns:
+          log prob optionally with score function
+        """
+        z, log_q_ = self.q0(num_samples, context=context)
+        log_q = torch.zeros_like(log_q_)
+        log_q += log_q_
+        for flow in self.flows:
+            z, log_det = flow(z, context=context)
+            log_q -= log_det
+        if not score_fn:
+            z_ = z
+            log_q = torch.zeros(len(z_), device=z_.device)
+            utils.set_requires_grad(self, False)
+            for i in range(len(self.flows) - 1, -1, -1):
+                z_, log_det = self.flows[i].inverse(z_, context=context)
+                log_q += log_det
+            log_q += self.q0.log_prob(z_, context=context)
+            utils.set_requires_grad(self, True)
+        return log_q, z
 
 
 class ClassCondFlow(nn.Module):
