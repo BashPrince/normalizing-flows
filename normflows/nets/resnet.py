@@ -52,13 +52,15 @@ class ResidualBlock(nn.Module):
 
 class OneBlobEncoder:
     """One blob encoding [Müller et al. 2018]"""
-    def __init__(self, num_bins, num_dims, device) -> None:
+    def __init__(self, num_bins, num_dims, device, lower=0.0, upper=1.0) -> None:
         self.num_bins = num_bins
-        self.sigma = torch.full((1, num_dims * self.num_bins), 1.0 / self.num_bins, device=device)
+        extent = upper - lower
+        step_size = extent / self.num_bins
+        self.sigma = torch.full((1, num_dims * self.num_bins), extent / self.num_bins, device=device)
         self.l = torch.arange(
-            0.5 / self.num_bins,
-            1.0,
-            1.0 / self.num_bins,
+            lower + 0.5 * step_size,
+            upper,
+            step_size,
             device=device).repeat(num_dims)
 
     def __call__(self, input):
